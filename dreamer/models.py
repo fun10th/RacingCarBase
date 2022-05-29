@@ -9,6 +9,7 @@ from tensorflow.keras import layers as tfkl
 from tensorflow_probability import distributions as tfd
 import tensorflow.keras.mixed_precision as prec
 from tensorflow_probability import layers as tfpl
+import tensorflow_hub as hub
 
 import tools as tools
 
@@ -69,7 +70,7 @@ class Dreamer(tools.Module):
             action = tf.zeros((len(obs[self._c.obs_type]), self._actdim), self._float)
         else:
             latent, action = state
-        embed = self._encode(tools.preprocess(obs, self._c))
+        embed = self._encode2(tools.preprocess(obs, self._c))
         latent, _ = self._dynamics.obs_step(latent, action, embed)
         feat = self._dynamics.get_feat(latent)
         if training:
@@ -158,6 +159,7 @@ class Dreamer(tools.Module):
             self._decode = ConvDecoder(32, cnn_act)
         elif self._c.obs_type == 'lidar':
             self._encode = IdentityEncoder()
+            self._encode2 = IdentityEncoder2()
             self._decode = LidarDistanceDecoder(128, self._obspace['lidar'].shape)
         elif self._c.obs_type == 'lidar_occupancy':
             self._encode = IdentityEncoder()
@@ -412,13 +414,35 @@ class IdentityEncoder(tools.Module):
     def __init__(self):
         super().__init__()
         self._name = "encoder"
+        self._feature_model = hub.load("https://tfhub.dev/google/imagenet/mobilenet_v2_100_128/feature_vector/5")
 
     def __call__(self, obs):
         if type(obs) == dict:
-            lidar = obs['lidar']
+            lidar = tf.cast(obs['rgb_camera'], tf.float32)
+            lidar = tf.squeeze(lidar)
+            lidar = self._feature_model(lidar)
+            lidar = tf.expand_dims(lidar, axis=0)
         else:
             lidar = obs
         return lidar
+
+class IdentityEncoder2(tools.Module):
+    # This is a dummy encoder created for working with Lidar observations.
+    # The size of the lidar scan is 1080, so we pass it directly without any compression.
+    # In this way, the algorithm's structure is the same for all the observations.
+    def __init__(self):
+        super().__init__()
+        self._name = "encoder"
+        self._feature_model = hub.load("https://tfhub.dev/google/imagenet/mobilenet_v2_100_128/feature_vector/5")
+
+    def __call__(self, obs):
+        if type(obs) == dict:
+            lidar = tf.cast(obs['rgb_camera'], tf.float32)
+            return self._feature_model(lidar)
+        else:
+            lidar = obs
+        return lidar
+
 
 
 class LidarDistanceDecoder(tools.Module):

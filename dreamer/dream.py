@@ -29,7 +29,7 @@ os.environ['MUJOCO_GL'] = 'egl'
 sys.path.append(str(pathlib.Path(__file__).parent))
 
 
-# tf.config.run_functions_eagerly(run_eagerly=True)
+#tf.config.run_functions_eagerly(run_eagerly=True)
 
 def define_config():
     """
@@ -50,7 +50,7 @@ def define_config():
     config.precision = 32
     config.obs_type = 'lidar'
     # Environment.
-    config.track = 'austria'
+    config.track = 'columbia'
     config.task = 'max_progress'
     config.action_repeat = 4
     config.eval_episodes = 5
@@ -77,7 +77,7 @@ def define_config():
     config.weight_decay = 0.0
     config.weight_decay_pattern = r'.*'
     # Training.
-    config.batch_size = 50
+    config.batch_size = 1
     config.batch_length = 50
     config.train_every = 1000
     config.train_steps = 100
