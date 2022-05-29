@@ -36,6 +36,8 @@ class Dreamer(tools.Module):
         with self._strategy.scope():
             self._dataset = iter(self._strategy.experimental_distribute_dataset(
                 tools.load_dataset(datadir, self._c)))
+            self._dataset2 = iter(self._strategy.experimental_distribute_dataset(
+                tools.load_dataset2(datadir, self._c)))
             self._build_model()
 
     def __call__(self, obs, reset, state=None, training=True):
@@ -54,7 +56,7 @@ class Dreamer(tools.Module):
                     for train_step in range(n):
                         print(f'\t[Train Step] # {train_step}')
                         log_images = self._c.log_images and log and train_step == 0
-                        self.train(next(self._dataset), log_images)
+                        self.train(next(self._dataset),next(self._dataset2), log_images)
                 if log:
                     self._write_summaries()
         action, state = self.policy(obs, state, training)
@@ -85,10 +87,10 @@ class Dreamer(tools.Module):
         self._should_pretrain()
 
     @tf.function()
-    def train(self, data, log_images=False):
-        self._strategy.run(self._train, args=(data, log_images))
+    def train(self, data, data2, log_images=False):
+        self._strategy.run(self._train, args=(data, data2, log_images))
 
-    def _train(self, data, log_images):
+    def _train(self, data, data2, log_images):
         with tf.GradientTape() as model_tape:
             embed = self._encode(data)
             post, prior = self._dynamics.observe(embed, data['action'])
@@ -111,6 +113,8 @@ class Dreamer(tools.Module):
             model_loss /= float(self._strategy.num_replicas_in_sync)
 
         with tf.GradientTape() as actor_tape:
+            embed = self._encode(data2)
+            post, prior = self._dynamics.observe(embed, data2['action'])
             imag_feat = self._imagine_ahead(post)
             reward = tf.cast(self._reward(imag_feat).mode(), 'float')  # cast: to address the output of bernoulli
             if self._c.pcont:
@@ -184,7 +188,7 @@ class Dreamer(tools.Module):
         # Do a train step to initialize all variables, including optimizer
         # statistics. Ideally, we would use batch size zero, but that doesn't work
         # in multi-GPU mode.
-        self.train(next(self._dataset))
+        self.train(next(self._dataset),next(self._dataset2))
 
     def _exploration(self, action, training):
         if training:

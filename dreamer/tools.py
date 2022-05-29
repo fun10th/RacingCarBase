@@ -263,6 +263,35 @@ def load_episodes(directory, rescan, length=None, balance=False, seed=0):
                 episode = {k: v[index: index + length] for k, v in episode.items()}
             yield episode
 
+def load_episodes_2(directory, rescan, length=None, balance=False, seed=0):
+    directory = pathlib.Path(directory).expanduser()
+    random = np.random.RandomState(seed)
+    cache = {}
+    while True:
+        for filename in directory.glob('*.npz'):
+            if filename not in cache:
+                try:
+                    with filename.open('rb') as f:
+                        episode = np.load(f)
+                        episode = {k: episode[k] for k in episode.keys()}
+                except Exception as e:
+                    print(f'Could not load episode: {e}')
+                    continue
+                cache[filename] = episode
+        keys = list(cache.keys())
+        for i in range(rescan):
+            episode_collection={}
+            for j in range(length):
+                episode_idx = random.choice(len(keys))
+                episode = cache[keys[episode_idx]]
+                total = len(next(iter(episode.values())))
+                idx = int(random.randint(0, total))
+                if not episode_collection:
+                    episode_collection = {k: v[idx: idx+1] for k, v in episode.items()}
+                else:
+                    for k,v in episode.items():
+                        episode_collection[k]=np.append(episode_collection[k],[v[idx]],axis=0)
+            yield episode_collection
 
 def preprocess(obs, config):
     dtype = prec.global_policy().compute_dtype
@@ -289,6 +318,19 @@ def load_dataset(directory, config):
     types = {k: v.dtype for k, v in episode.items()}
     shapes = {k: (None,) + v.shape[1:] for k, v in episode.items()}
     generator = lambda: load_episodes(
+        directory, config.train_steps, config.batch_length,
+        config.dataset_balance)
+    dataset = tf.data.Dataset.from_generator(generator, types, shapes)
+    dataset = dataset.map(functools.partial(preprocess, config=config))
+    dataset = dataset.batch(config.batch_size, drop_remainder=True)
+    dataset = dataset.prefetch(10)
+    return dataset
+
+def load_dataset2(directory, config):
+    episode = next(load_episodes_2(directory, 1, 50))
+    types = {k: v.dtype for k, v in episode.items()}
+    shapes = {k: (None,) + v.shape[1:] for k, v in episode.items()}
+    generator = lambda: load_episodes_2(
         directory, config.train_steps, config.batch_length,
         config.dataset_balance)
     dataset = tf.data.Dataset.from_generator(generator, types, shapes)
