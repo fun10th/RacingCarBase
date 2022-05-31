@@ -28,7 +28,7 @@ def copy_checkpoint(agent, checkpoint_file, outdir, checkpoint_id):
 
 
 def get_checkpoint_regex(checkpoint_dir, track, agent, obs_type):
-    return str(checkpoint_dir / f'{track}_{agent}_{obs_type}_[0-9]*')
+    return str(checkpoint_dir / f'{track}_{agent}_*')
 
 
 def glob_checkpoints(checkpoint_dir, track, agent, obs_type="*"):
