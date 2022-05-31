@@ -1,5 +1,6 @@
 import wrappers as wrappers
-from racecar_gym.envs import MultiAgentScenario, ChangingTrackMultiAgentRaceEnv, MultiAgentRaceEnv
+from racecar_gym.envs.gym_api import MultiAgentScenario, MultiAgentRaceEnv
+from racecar_gym.envs.gym_api import ChangingTrackMultiAgentRaceEnv
 from callbacks import save_eval_videos, save_episodes, save_trajectory, summarize_episode, summarize_eval_episode
 
 
@@ -8,7 +9,7 @@ def make_multi_track_env(tracks, action_repeat, rendering=True, is_dreamer=True)
   # ideas to solve this issue? when changing env force the update of occupancy map in wrapper?
   scenarios = [MultiAgentScenario.from_spec(f'scenarios/eval/{track}.yml', rendering=rendering) for track in tracks]
   env = ChangingTrackMultiAgentRaceEnv(scenarios=scenarios, order='manual')
-  env = wrappers.RaceCarWrapper(env)
+  env = wrappers.RaceCarWrapper(env)  
   env = wrappers.FixedResetMode(env, mode='grid')
   env = wrappers.ActionRepeat(env, action_repeat)
   if is_dreamer:
