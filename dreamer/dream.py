@@ -50,7 +50,7 @@ def define_config():
     config.precision = 32
     config.obs_type = 'lidar'
     # Environment.
-    config.track = 'columbia'
+    config.track = 'austria'
     config.task = 'max_progress'
     config.action_repeat = 4
     config.eval_episodes = 5
@@ -64,6 +64,7 @@ def define_config():
     config.clip_rewards_max = 1
     # Model.
     config.encoded_obs_dim = 1080
+    config.encoded_img_dim = 1280
     config.deter_size = 200
     config.stoch_size = 30
     config.num_units = 400
@@ -77,7 +78,7 @@ def define_config():
     config.weight_decay = 0.0
     config.weight_decay_pattern = r'.*'
     # Training.
-    config.batch_size = 1
+    config.batch_size = 5
     config.batch_length = 50
     config.train_every = 1000
     config.train_steps = 100
